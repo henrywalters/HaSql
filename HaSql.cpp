@@ -89,16 +89,105 @@ void HaSql::db_enter_row()
     {
         std::ofstream d(name.c_str(), std::ios::app);
         d << "\n";
-        for (int i = 1; i <= cols; i++)
+        std::string *columns = db_col_names();
+        for (int i = 0; i < cols; i++)
         {
-            std::cout << "ENTRY AT COL " << i << ": ";
+            std::cout << "ENTRY TO " << columns[i] << ": ";
             std::string input;
             std::cin >> input;
             d << input << " ";
-            rows++;
+
         }
+        rows++;
         d.close();
     }
+}
+
+std::string * HaSql::db_col_names()
+{
+    if (!open) { std::cout << "DATABASE IS NOT OPEN..."; return NULL; }
+    else
+    {
+        std::ifstream db(name.c_str());
+        std::string line;
+        std::getline(db,line);
+        std::string * n;
+        n = new (std::nothrow) std::string[cols];
+        int index = 0;
+        int wordStart = 0;
+        int wordEnd = 0;
+        for (int i = 0; i < line.length(); i++)
+        {
+            wordEnd++;
+            if (line[i] == ' ')
+            {
+                n[index] = line.substr(wordStart,wordEnd - wordStart - 1);
+                index++;
+
+                wordStart = wordEnd;
+            }
+
+        }
+        return n;
+    }
+}
+
+bool HaSql::db_entry_exists(std::string columns[], std::string entry[])
+{
+    bool check_at[cols];
+    std::string * col_names = db_col_names();
+    for (int i = 0; i < cols; i++)
+    {
+        check_at[i] = false;
+        for (int j = 0; j < sizeof(columns)-1; j++)
+        {
+            if (col_names[i] == columns[j]) { check_at[i] = true; }
+        }
+    }
+
+    int index = 0;
+
+    std::string line;
+    std::ifstream db(name.c_str(),std::ios::app);
+    std::getline(db,line);
+
+    bool exists = false;
+    bool return_answer = false;
+
+    while(std::getline(db,line))
+    {
+        std::string n[rows];
+        int wordStart = 0;
+        int wordEnd = 0;
+        index = 0;
+        for (int i = 0; i < line.length(); i++)
+        {
+            wordEnd++;
+            if (line[i] == ' ')
+                {
+                    n[index] = line.substr(wordStart,wordEnd - wordStart - 1);
+                    index++;
+
+                    wordStart = wordEnd;
+                }
+
+
+        }
+
+        bool all_confirmed = true;
+        int col_check = 0;
+        for (int i = 0; i < cols; i++)
+        {
+
+            if (check_at[i] && entry[col_check] != n[i]) { all_confirmed = false; }
+            else { col_check++;}
+
+        }
+        if (all_confirmed) { return_answer = true;}
+
+    }
+    return return_answer;
+
 }
 
 void HaSql::db_data()

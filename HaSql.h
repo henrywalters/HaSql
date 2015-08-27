@@ -19,8 +19,11 @@ class HaSql
         int db_cols(std::string);
         void db_enter_row();
         bool db_enter_row_array(std::string[]);
+        bool db_entry_exists(std::string[],std::string[]);
+        std::string * db_col_names();
     protected:
     private:
+
 };
 
 #endif // HASQL_H

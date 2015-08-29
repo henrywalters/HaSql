@@ -11,6 +11,9 @@ class HaSql
     public:
         HaSql();
         virtual ~HaSql();
+
+        void hasql_cmdln();
+
         void db_open(std::string);
         void db_close();
         bool db_exists(std::string);
@@ -19,8 +22,10 @@ class HaSql
         int db_cols(std::string);
         void db_enter_row();
         bool db_enter_row_array(std::string[]);
-        bool db_entry_exists(std::string[],std::string[]);
+        std::string * select(std::string,std::string);
         std::string * db_col_names();
+        int word_count(std::string);
+        std::string * db_entry_arr(std::string);
     protected:
     private:
 

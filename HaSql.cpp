@@ -2,6 +2,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <CMD_Maker.h>
 
 HaSql::HaSql()
 {
@@ -12,6 +13,49 @@ HaSql::~HaSql()
 {
     //dtor
 }
+
+void HaSql::hasql_cmdln()
+{
+    CMD_Maker hasql;
+    hasql.set_prefix("HaSql");
+    bool running = true;
+    while (running)
+    {
+        hasql.get_line();
+        int words = hasql.word_count();
+        std::string * bash;
+        bash = hasql.words();
+        if (words == 1 && bash[0] == "END")
+        {
+            std::cout << "HASQL COMMAND LINE ENDED";
+            running = false;
+
+        }
+        else if (words == 2 && bash[0] == "OPEN")
+        {
+            db_open(bash[1]);
+        }
+        else if (words == 1 && bash[0] == "CLOSE")
+        {
+            db_close();
+        }
+        else if (words == 1 && bash[0] == "STATUS")
+        {
+            db_data();
+        }
+        else if (words == 2 && bash[0] == "NEW" && bash[1] == "ENTRY")
+        {
+            db_enter_row();
+        }
+        else if (bash[0] == "SELECT" && bash[2] == "FROM" && words == 4)
+        {
+            std::string * matches = select(bash[3],bash[1]);
+            std::cout << matches[0];
+        }
+
+    }
+}
+
 
 bool HaSql::db_exists(std::string lookup)
 {
@@ -28,9 +72,9 @@ void HaSql::db_close()
         cols = 0;
         rows = 0;
         name = "";
-        std::cout << "DATABASE CLOSED";
+        std::cout << "DATABASE CLOSED\n";
     }
-    else{ std::cout << "DATABASE IS NOT OPEN"; }
+    else{ std::cout << "DATABASE IS NOT OPEN\n"; }
 }
 void HaSql::db_open(std::string new_db)
 {
@@ -40,7 +84,7 @@ void HaSql::db_open(std::string new_db)
         int col;
         std::cout << "COLUMNS IN DATABASE: ";
         std:: cin >> col;
-        std::cout << "DATABASE BEING CREATED...\n";
+
 
         cols = col;
         rows = 0;
@@ -55,6 +99,7 @@ void HaSql::db_open(std::string new_db)
             std::cin >> inp;
             mkdb << inp << " ";
         }
+        std::cout << "DATABASE BEING CREATED...";
         mkdb.close();
     }
     else
@@ -101,6 +146,7 @@ void HaSql::db_enter_row()
         rows++;
         d.close();
     }
+
 }
 
 std::string * HaSql::db_col_names()
@@ -132,62 +178,27 @@ std::string * HaSql::db_col_names()
     }
 }
 
-bool HaSql::db_entry_exists(std::string columns[], std::string entry[])
+std::string * HaSql::select(std::string column, std::string entry)
 {
-    bool check_at[cols];
-    std::string * col_names = db_col_names();
-    for (int i = 0; i < cols; i++)
-    {
-        check_at[i] = false;
-        for (int j = 0; j < sizeof(columns)-1; j++)
-        {
-            if (col_names[i] == columns[j]) { check_at[i] = true; }
-        }
-    }
-
-    int index = 0;
-
+    std::ifstream db(name.c_str());
     std::string line;
-    std::ifstream db(name.c_str(),std::ios::app);
-    std::getline(db,line);
-
-    bool exists = false;
-    bool return_answer = false;
-
-    while(std::getline(db,line))
+    getline(db,line);
+    std::string * columns = db_col_names();
+    std::string * output;
+    output = new (std::nothrow) std::string[rows];
+    int index = 0;
+    while(getline(db,line))
     {
-        std::string n[rows];
-        int wordStart = 0;
-        int wordEnd = 0;
-        index = 0;
-        for (int i = 0; i < line.length(); i++)
-        {
-            wordEnd++;
-            if (line[i] == ' ')
-                {
-                    n[index] = line.substr(wordStart,wordEnd - wordStart - 1);
-                    index++;
-
-                    wordStart = wordEnd;
-                }
-
-
-        }
-
-        bool all_confirmed = true;
-        int col_check = 0;
+        std::string * words = db_entry_arr(line);
         for (int i = 0; i < cols; i++)
         {
-
-            if (check_at[i] && entry[col_check] != n[i]) { all_confirmed = false; }
-            else { col_check++;}
-
+            if (words[i] == entry && column == columns[i])
+            {
+                output[index] = line;
+            }
         }
-        if (all_confirmed) { return_answer = true;}
-
     }
-    return return_answer;
-
+    return output;
 }
 
 void HaSql::db_data()
@@ -200,7 +211,7 @@ void HaSql::db_data()
     {
         std::cout << "DATABASE NAME: " << name;
         std::cout << "\nCOLUMNS: " << cols;
-        std::cout << "\nROWS: " << rows;
+        std::cout << "\nROWS: " << rows << "\n";
     }
 }
 
@@ -237,8 +248,42 @@ int HaSql::db_cols(std::string db)
 }
 
 
+int HaSql::word_count(std::string line)
+{
+    int x = 1;
+    for (int i = 1; i < line.length(); i++)
+    {
+        if (line[i] == ' ' && line[i-1] != ' ' && i <line.length() - 1)
+        {
+            x++;
+        }
+    }
+    return x;
+}
 
-
-
+std::string * HaSql::db_entry_arr(std::string line)
+{
+    std::string * out;
+    HaSql ha;
+    out = new (std::nothrow) std::string[ha.word_count(line)];
+    int wordStart = 0;
+    int wordEnd = 0;
+    int index = 0;
+    for (int i = 0; i < line.length(); i++)
+    {
+        wordEnd++;
+        if (line[i] == ' ' && line[i-1] != ' ')
+        {
+            out[index] = line.substr(wordStart,wordEnd-wordStart-1);
+            wordStart = wordEnd;
+            index++;
+        }
+    }
+    if (index != ha.word_count(line))
+    {
+        out[ha.word_count(line) - 1] = line.substr(wordStart, line.length() - wordStart);
+    }
+    return out;
+}
 
 
